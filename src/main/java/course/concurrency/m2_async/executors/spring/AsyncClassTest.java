@@ -9,6 +9,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
 @Component
+@EnableAsync
 public class AsyncClassTest {
 
     @Autowired
