@@ -1,11 +1,16 @@
 package course.concurrency.m2_async.cf.min_price;
 
+import org.junit.platform.commons.logging.Logger;
+import org.junit.platform.commons.logging.LoggerFactory;
+
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public class PriceAggregator {
+
+    private static final Logger log = LoggerFactory.getLogger(PriceAggregator.class);
 
     private PriceRetriever priceRetriever = new PriceRetriever();
 
@@ -24,7 +29,11 @@ public class PriceAggregator {
         Set<Double> prices = new HashSet<>();
         shopIds.forEach(shop -> CompletableFuture
                 .supplyAsync(() -> priceRetriever.getPrice(shop, itemId))
-                .thenApply(prices::add)
+                .thenAccept(prices::add)
+                .exceptionally(ex -> {
+                    log.warn(ex, ex::getMessage);
+                    return null;
+                })
                 .join());
 
         return prices.stream().min(Double::compareTo)
