@@ -22,11 +22,10 @@ public class PriceAggregator {
     public double getMinPrice(long itemId) {
         // place for your code
         Set<Double> prices = new HashSet<>();
-        shopIds.forEach(shop -> {
-            CompletableFuture<Double> completableFuture =
-                    CompletableFuture.supplyAsync(() -> priceRetriever.getPrice(shop, itemId));
-            prices.add(completableFuture.join());
-        });
+        shopIds.forEach(shop -> CompletableFuture
+                .supplyAsync(() -> priceRetriever.getPrice(shop, itemId))
+                .thenApply(prices::add)
+                .join());
 
         return prices.stream().min(Double::compareTo)
                 .orElseThrow(() -> new RuntimeException("Failed on counting minimum price"));
