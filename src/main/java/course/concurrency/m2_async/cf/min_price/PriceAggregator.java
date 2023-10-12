@@ -1,7 +1,10 @@
 package course.concurrency.m2_async.cf.min_price;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public class PriceAggregator {
 
@@ -11,7 +14,7 @@ public class PriceAggregator {
         this.priceRetriever = priceRetriever;
     }
 
-    private Collection<Long> shopIds = Set.of(10l, 45l, 66l, 345l, 234l, 333l, 67l, 123l, 768l);
+    private Collection<Long> shopIds = Set.of(10L, 45L, 66L, 345L, 234L, 333L, 67L, 123L, 768L);
 
     public void setShops(Collection<Long> shopIds) {
         this.shopIds = shopIds;
@@ -19,6 +22,19 @@ public class PriceAggregator {
 
     public double getMinPrice(long itemId) {
         // place for your code
-        return 0;
+        Set<Double> prices = new HashSet<>();
+        shopIds.forEach(shop -> {
+            CompletableFuture<Double> completableFuture =
+                    CompletableFuture.supplyAsync(() -> priceRetriever.getPrice(shop, itemId));
+            try {
+                prices.add(completableFuture.get());
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e.getMessage(), e);
+            }
+        });
+
+        return prices.stream().min(Double::compareTo)
+                .orElseThrow(() -> new RuntimeException("Failed on counting minimum price"));
+
     }
 }
