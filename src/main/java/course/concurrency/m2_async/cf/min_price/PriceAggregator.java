@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 public class PriceAggregator {
 
@@ -26,11 +25,7 @@ public class PriceAggregator {
         shopIds.forEach(shop -> {
             CompletableFuture<Double> completableFuture =
                     CompletableFuture.supplyAsync(() -> priceRetriever.getPrice(shop, itemId));
-            try {
-                prices.add(completableFuture.get());
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e.getMessage(), e);
-            }
+            prices.add(completableFuture.join());
         });
 
         return prices.stream().min(Double::compareTo)
