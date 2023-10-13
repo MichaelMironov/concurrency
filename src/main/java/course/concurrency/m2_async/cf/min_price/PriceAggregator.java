@@ -4,9 +4,12 @@ import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 public class PriceAggregator {
 
@@ -25,19 +28,30 @@ public class PriceAggregator {
     }
 
     public double getMinPrice(long itemId) {
-        // place for your code
-        Set<Double> prices = new HashSet<>();
-        shopIds.forEach(shop -> CompletableFuture
-                .supplyAsync(() -> priceRetriever.getPrice(shop, itemId))
-                .thenAccept(prices::add)
-                .exceptionally(ex -> {
-                    log.warn(ex, ex::getMessage);
-                    return null;
-                })
-                .join());
 
-        return prices.stream().min(Double::compareTo)
-                .orElseThrow(() -> new RuntimeException("Failed on counting minimum price"));
+        Set<Double> prices;
+        try {
+            prices = CompletableFuture.supplyAsync(() ->
+                    shopIds.stream()
+                            .map((id) -> priceRetriever.getPrice(itemId, id)).collect(Collectors.toSet())
+            ).get(2_900L, TimeUnit.MILLISECONDS);
+
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        } catch (TimeoutException e) {
+            return Double.NaN;
+        }
+
+//        shopIds.forEach(shop -> CompletableFuture
+//                .supplyAsync(() -> priceRetriever.getPrice(shop, itemId))
+//                .thenAccept(prices::add)
+//                .exceptionally(ex -> {
+//                    log.warn(ex, ex::getMessage);
+//                    return null;
+//                })
+//                .join());
+
+        return prices.stream().min(Double::compareTo).orElseThrow(RuntimeException::new);
 
     }
 }
