@@ -6,9 +6,7 @@ import org.junit.platform.commons.logging.LoggerFactory;
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 public class PriceAggregator {
@@ -30,17 +28,13 @@ public class PriceAggregator {
     public double getMinPrice(long itemId) {
 
         Set<Double> prices;
-        try {
-            prices = CompletableFuture.supplyAsync(() ->
-                    shopIds.stream()
-                            .map((id) -> priceRetriever.getPrice(itemId, id)).collect(Collectors.toSet())
-            ).get(2_900L, TimeUnit.MILLISECONDS);
+        final CompletableFuture<Set<Double>> future = CompletableFuture.supplyAsync(() ->
+                shopIds.stream()
+                        .map((id) -> priceRetriever.getPrice(itemId, id)).collect(Collectors.toSet())
+        );
 
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        } catch (TimeoutException e) {
-            return Double.NaN;
-        }
+        prices = future.completeOnTimeout(null, 2_900L, TimeUnit.MILLISECONDS).join();
+
 
 //        shopIds.forEach(shop -> CompletableFuture
 //                .supplyAsync(() -> priceRetriever.getPrice(shop, itemId))
@@ -51,7 +45,9 @@ public class PriceAggregator {
 //                })
 //                .join());
 
-        return prices.stream().min(Double::compareTo).orElseThrow(RuntimeException::new);
+        return prices == null
+                ? Double.NaN
+                : prices.stream().min(Double::compareTo).orElseThrow(RuntimeException::new);
 
     }
 }
