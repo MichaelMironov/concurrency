@@ -4,6 +4,8 @@ import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -27,27 +29,32 @@ public class PriceAggregator {
 
     public double getMinPrice(long itemId) {
 
-        Set<Double> prices;
-        final CompletableFuture<Set<Double>> future = CompletableFuture.supplyAsync(() ->
-                shopIds.stream()
-                        .map((id) -> priceRetriever.getPrice(itemId, id)).collect(Collectors.toSet())
-        );
+        final List<CompletableFuture<Double>> futures = shopIds.stream()
+                .map(shopId -> sendRequest(shopId, itemId))
+                .collect(Collectors.toList());
 
-        prices = future.completeOnTimeout(null, 2_900L, TimeUnit.MILLISECONDS).join();
+        final CompletableFuture<List<Double>> collect = futures.stream().collect(Collectors.collectingAndThen(
+                Collectors.toList(), completableFutures ->
+                        CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
+                                .thenApply(__ -> completableFutures)
+                                .thenApply(list -> list.stream()
+                                        .map(CompletableFuture::join)
+                                        .collect(Collectors.toList())
+                                )
+        ));
 
+        return collect.join().stream()
+                .filter(Objects::nonNull)
+                .filter(aDouble -> aDouble != 0.0D)
+                .min(Double::compareTo).orElse(Double.NaN);
 
-//        shopIds.forEach(shop -> CompletableFuture
-//                .supplyAsync(() -> priceRetriever.getPrice(shop, itemId))
-//                .thenAccept(prices::add)
-//                .exceptionally(ex -> {
-//                    log.warn(ex, ex::getMessage);
-//                    return null;
-//                })
-//                .join());
+    }
 
-        return prices == null
-                ? Double.NaN
-                : prices.stream().min(Double::compareTo).orElseThrow(RuntimeException::new);
+    private CompletableFuture<Double> sendRequest(final Long shopId, final Long itemId) {
+        return CompletableFuture
+                .supplyAsync(() -> priceRetriever.getPrice(itemId, shopId))
+                .completeOnTimeout(Double.NaN, 2500L, TimeUnit.MILLISECONDS)
+                .exceptionally(throwable -> null);
 
     }
 }
