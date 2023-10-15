@@ -8,13 +8,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class PriceAggregator {
 
     private static final Logger log = LoggerFactory.getLogger(PriceAggregator.class);
-
+    private static final long MAX_TIMEOUT = 2_550L;
+    private final Executor executor = Executors.newCachedThreadPool();
     private PriceRetriever priceRetriever = new PriceRetriever();
 
     public void setPriceRetriever(PriceRetriever priceRetriever) {
@@ -45,15 +48,14 @@ public class PriceAggregator {
 
         return executedFutures.join().stream()
                 .filter(Objects::nonNull)
-                .filter(aDouble -> aDouble != 0.0D)
                 .min(Double::compareTo).orElse(Double.NaN);
 
     }
 
     private CompletableFuture<Double> sendRequest(final Long shopId, final Long itemId) {
         return CompletableFuture
-                .supplyAsync(() -> priceRetriever.getPrice(itemId, shopId))
-                .completeOnTimeout(Double.NaN, 2500L, TimeUnit.MILLISECONDS)
+                .supplyAsync(() -> priceRetriever.getPrice(itemId, shopId), executor)
+                .orTimeout(MAX_TIMEOUT, TimeUnit.MILLISECONDS)
                 .exceptionally(throwable -> null);
 
     }
