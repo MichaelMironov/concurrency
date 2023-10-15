@@ -33,7 +33,7 @@ public class PriceAggregator {
                 .map(shopId -> sendRequest(shopId, itemId))
                 .collect(Collectors.toList());
 
-        final CompletableFuture<List<Double>> collect = futures.stream().collect(Collectors.collectingAndThen(
+        final CompletableFuture<List<Double>> executedFutures = futures.stream().collect(Collectors.collectingAndThen(
                 Collectors.toList(), completableFutures ->
                         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
                                 .thenApply(__ -> completableFutures)
@@ -43,7 +43,7 @@ public class PriceAggregator {
                                 )
         ));
 
-        return collect.join().stream()
+        return executedFutures.join().stream()
                 .filter(Objects::nonNull)
                 .filter(aDouble -> aDouble != 0.0D)
                 .min(Double::compareTo).orElse(Double.NaN);
