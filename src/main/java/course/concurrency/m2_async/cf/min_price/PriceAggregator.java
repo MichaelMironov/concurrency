@@ -36,19 +36,13 @@ public class PriceAggregator {
                 .map(shopId -> sendRequest(shopId, itemId))
                 .collect(Collectors.toList());
 
-        final CompletableFuture<List<Double>> executedFutures = futures.stream().collect(Collectors.collectingAndThen(
-                Collectors.toList(), completableFutures ->
-                        CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
-                                .thenApply(__ -> completableFutures)
-                                .thenApply(list -> list.stream()
-                                        .map(CompletableFuture::join)
-                                        .collect(Collectors.toList())
-                                )
-        ));
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
 
-        return executedFutures.join().stream()
+        return futures.stream()
+                .map(CompletableFuture::join)
                 .filter(Objects::nonNull)
-                .min(Double::compareTo).orElse(Double.NaN);
+                .min(Double::compareTo)
+                .orElse(Double.NaN);
 
     }
 
