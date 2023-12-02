@@ -25,7 +25,7 @@ public class RestaurantService {
     }
 
     public void addToStat(String restaurantName) {
-//        stat.computeIfAbsent(restaurantName, s -> new AtomicInteger()).getAndIncrement();
+        stat.computeIfAbsent(restaurantName, s -> new AtomicInteger()).getAndIncrement();
 //        stat.merge(restaurantName, 1, Integer::sum);
     }
 

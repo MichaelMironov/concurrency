@@ -15,6 +15,7 @@ public class OrderService {
     }
 
     public long createOrder(List<Item> items) {
+
         long id = nextId();
 
         currentOrders.compute(id, (aLong, order1) -> {
@@ -22,35 +23,43 @@ public class OrderService {
             order.setId(id);
             return order;
         });
+
         return id;
     }
 
     public void updatePaymentInfo(long orderId, PaymentInfo paymentInfo) {
-//        currentOrders.get(orderId).setPaymentInfo(paymentInfo);
 
         currentOrders.computeIfPresent(orderId, (aLong, order) -> {
             order.setPaymentInfo(paymentInfo);
+            addDeliver(order);
             return order;
         });
 
-        if (currentOrders.get(orderId).checkStatus()) {
-            deliver(currentOrders.get(orderId));
-        }
+//        if (currentOrders.get(orderId).checkStatus()) {
+//            deliver(currentOrders.get(orderId));
+//        }
     }
 
-    public synchronized void setPacked(long orderId) {
-        currentOrders.get(orderId).setPacked(true);
-        if (currentOrders.get(orderId).checkStatus()) {
-            deliver(currentOrders.get(orderId));
-        }
+
+    public void setPacked(long orderId) {
+
+        currentOrders.computeIfPresent(orderId, (aLong, order) -> {
+            order.setPacked(true);
+            addDeliver(order);
+            return order;
+        });
     }
 
     private synchronized void deliver(Order order) {
         /* ... */
         currentOrders.get(order.getId()).setStatus(Order.Status.DELIVERED);
+//        currentOrders.compute(order.getId(), (aLong, order1) -> order1.setStatus(Order.Status.DELIVERED))
     }
 
-    public synchronized boolean isDelivered(long orderId) {
+    public boolean isDelivered(long orderId) {
         return currentOrders.get(orderId).getStatus().equals(Order.Status.DELIVERED);
+    }
+    private void addDeliver(Order order) {
+        if (order.checkStatus()) deliver(order);
     }
 }
