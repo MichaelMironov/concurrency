@@ -1,8 +1,8 @@
 package course.concurrency.exams.auction;
 
 public class Bid {
-    private Long id;
-    private Long participantId;
+    private final Long id;
+    private final Long participantId;
     public volatile Long price;
 
     public Bid(Long id, Long participantId, Long price) {
@@ -19,7 +19,7 @@ public class Bid {
         return participantId;
     }
 
-    public Long getPrice() {
+    public synchronized Long getPrice() {
         return price;
     }
 }
